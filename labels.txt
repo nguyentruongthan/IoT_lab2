@@ -1,3 +1,0 @@
-0 no_people
-1 no_mask
-2 mask

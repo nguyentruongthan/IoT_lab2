@@ -1,15 +1,17 @@
-import sys
-import time
-from simple_ai import *
+from uart import *
 from MQTTClient import *
+import time
+
+
 
 class Task:
-  def __init__(self, delay, period, duration, func):
+  def __init__(self, delay, period, duration, func, args = None):
     self.delay = delay
     self.duration = duration
     self.func = func
     self.period = period
     self.run_me = 0
+    self.args = args
 
 class Tasks:
   def __init__(self):
@@ -35,7 +37,10 @@ class Tasks:
         #reset flag run_me
         task.run_me = 0
         #active function of task
-        task.func()
+        if(task.args != "None"):
+          task.func(task.args)
+        else:
+          task.func()
         #decrease duration of task by 1 if duration > 0
         if(task.duration > 0):
           task.duration -= 1
@@ -43,50 +48,15 @@ class Tasks:
         if(task.duration == 0):
           self.remove_task(task)
 
-
-
+client = mqtt_client()
 
 tasks = Tasks()
-
-def ai_detect():
-  #reset: counter_mask, counter_no_mask, counter_no_people 
-  #for function image_detector_many_times()
-  reset_detect_many_times()
-  #set duratio of detect_image_task is 5 for this task will run 5 times
-  detect_image_task.duration = 5
-  #ADd task detect many times
-  tasks.add_task(detect_image_task)
-
-ai_detect_task = Task(delay = 20, period = 50, duration = -1, func = ai_detect)
-
-
-client = mqtt_client()
-def image_detect_task():
-  result = image_detector_many_times()
-  if(result == -1):
-    client.publish("ai", "Camera error")
-    print("Camera error")
-    detect_image_task.duration = 0
-  elif(result == None):
-    if(detect_image_task.duration == 1):
-      client.publish("ai", "Không xác định được")
-      print("Không xác định được")
-  else:
-    class_name = class_names[result]
-    client.publish("ai", class_name)
-    print(class_name)
-
-    detect_image_task.duration = 0
-  
-
-detect_image_task = Task(delay = 0, period = 1, duration = 5, func = image_detect_task )
+read_uart_task = Task(delay = 2, period = 1, duration = -1, func = readSerial, args = client)
 
 if __name__ == "__main__":
-
-  tasks.add_task(ai_detect_task)  
+  tasks.add_task(read_uart_task)
   while 1:
     tasks.update()
     tasks.dispatch()
 
     time.sleep(0.1) #time unit is 100ms
-    
